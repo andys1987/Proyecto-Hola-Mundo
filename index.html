@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HoloTrader CEO AI</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>HoloTrader CEO AI</h1>
+      <p>Asistente futurista para diseño, evolución y gobierno de EAs en MQL5.</p>
+    </div>
+    <button id="saveSnapshotBtn">Guardar snapshot del workspace</button>
+  </header>
+
+  <main class="layout">
+    <section class="card holo-panel">
+      <h2>Holograma Trader (tiempo real)</h2>
+      <div class="hologram-wrap">
+        <div class="hologram" id="hologramFace">
+          <div class="head"></div>
+          <div class="pulse"></div>
+        </div>
+        <div class="status-block">
+          <p><strong>Estado:</strong> <span id="voiceStatus">Voz desactivada</span></p>
+          <p><strong>Modo:</strong> Friendly + Institucional + Algorítmico</p>
+          <button id="toggleVoiceBtn">Activar voz</button>
+        </div>
+      </div>
+      <div class="knowledge-grid">
+        <span>MQL5 completo</span>
+        <span>Trading algorítmico</span>
+        <span>Trading institucional</span>
+        <span>Brokers: Deriv</span>
+        <span>Brokers: Weltrade</span>
+        <span>Brokers: VT Markets</span>
+      </div>
+    </section>
+
+    <section class="card chat-panel">
+      <h2>Conversación con CEO AI</h2>
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" type="text" placeholder="Escribe tu idea de trading, módulo o mejora..." required />
+        <button type="submit">Enviar</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Organigrama de proyectos</h2>
+      <div class="board" id="projectBoard">
+        <div>
+          <h3>Diseño</h3>
+          <ul id="col-design"></ul>
+        </div>
+        <div>
+          <h3>En desarrollo</h3>
+          <ul id="col-dev"></ul>
+        </div>
+        <div>
+          <h3>Terminados</h3>
+          <ul id="col-done"></ul>
+        </div>
+      </div>
+      <form id="projectForm" class="inline-form">
+        <input id="projectName" type="text" placeholder="Nuevo proyecto EA" required />
+        <select id="projectState">
+          <option value="design">Diseño</option>
+          <option value="dev">En desarrollo</option>
+          <option value="done">Terminado</option>
+        </select>
+        <button type="submit">Agregar</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Fábrica de bots y versionado</h2>
+      <form id="botForm" class="inline-form">
+        <input id="botName" type="text" placeholder="Nombre del EA" required />
+        <input id="botVersion" type="text" placeholder="v1.0.0" required />
+        <input id="botFocus" type="text" placeholder="Objetivo / mejora" required />
+        <button type="submit">Registrar versión</button>
+      </form>
+      <ul id="botTimeline" class="timeline"></ul>
+      <div class="downloads">
+        <button id="downloadMql5">Descargar .mq5</button>
+        <button id="downloadEx5">Descargar .ex5 (plantilla)</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Centro de agentes</h2>
+      <form id="agentForm" class="inline-form">
+        <input id="agentName" type="text" placeholder="Nombre del agente" required />
+        <select id="agentRole">
+          <option value="research">Investigación de índices sintéticos</option>
+          <option value="coder">Programación de módulos</option>
+          <option value="integrator">Integración de módulos</option>
+          <option value="qa">QA y validación</option>
+        </select>
+        <button type="submit">Crear agente</button>
+      </form>
+      <ul id="agentList" class="list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Repositorio de conocimiento</h2>
+      <form id="uploadForm" class="inline-form">
+        <input id="knowledgeFile" type="file" multiple required />
+        <button type="submit">Cargar contenido</button>
+      </form>
+      <p class="muted">Los archivos se indexan localmente (nombre + extracto) para retroalimentar respuestas.</p>
+      <ul id="knowledgeList" class="list"></ul>
+    </section>
+  </main>
+
+  <template id="chatItemTemplate">
+    <article class="chat-item">
+      <p class="meta"></p>
+      <p class="text"></p>
+    </article>
+  </template>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
