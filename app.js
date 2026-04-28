@@ -21,6 +21,10 @@ const initialState = {
 const state = loadState();
 const $ = (id) => document.getElementById(id);
 
+let voiceEnabled = false;
+let recognizer;
+let listening = false;
+
 function loadState() {
   try {
     const raw = localStorage.getItem(storageKey);
@@ -139,9 +143,6 @@ function aiResponse(prompt) {
   return 'Recibido. Te propongo convertir tu idea en backlog técnico: objetivo, señales, gestión monetaria, validación y despliegue con control de versiones.';
 }
 
-let voiceEnabled = false;
-let recognizer;
-
 function speak(text) {
   if (!voiceEnabled || !window.speechSynthesis) return;
   const utter = new SpeechSynthesisUtterance(text);
@@ -150,23 +151,20 @@ function speak(text) {
   speechSynthesis.speak(utter);
 }
 
-function setupVoice() {
-  const status = $('voiceStatus');
-  const button = $('toggleVoiceBtn');
-  const face = $('hologramFace');
+function processPrompt(prompt, source = 'Usuario') {
+  const cleanPrompt = prompt.trim();
+  if (!cleanPrompt) return;
 
-  button.addEventListener('click', () => {
-    voiceEnabled = !voiceEnabled;
-    status.textContent = voiceEnabled ? 'Voz activada' : 'Voz desactivada';
-    status.classList.toggle('voice-on', voiceEnabled);
-    button.textContent = voiceEnabled ? 'Desactivar voz' : 'Activar voz';
-    face.style.boxShadow = voiceEnabled ? '0 0 18px #6cffdf' : 'none';
+  addChat(source, cleanPrompt);
+  const answer = aiResponse(cleanPrompt);
+  addChat('CEO AI', answer);
+  speak(answer);
+}
 
-    if (voiceEnabled) {
-      addChat('Sistema', 'Voz activada. Puedes usar chat escrito o reconocimiento de voz si el navegador lo soporta.');
-      maybeInitRecognizer();
-    }
-  });
+function setMicStatus(text, active = false) {
+  const mic = $('micStatus');
+  mic.textContent = text;
+  mic.classList.toggle('listening-on', active);
 }
 
 function maybeInitRecognizer() {
@@ -175,26 +173,92 @@ function maybeInitRecognizer() {
 
   recognizer = new SpeechRecognition();
   recognizer.lang = 'es-ES';
-  recognizer.interimResults = false;
+  recognizer.interimResults = true;
+  recognizer.continuous = true;
   recognizer.maxAlternatives = 1;
 
-  recognizer.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    $('chatInput').value = transcript;
+  recognizer.onstart = () => {
+    listening = true;
+    setMicStatus('Escuchando...', true);
+    $('toggleListenBtn').textContent = 'Detener escucha';
+    addChat('Sistema', '🎤 Escucha activada. Habla cuando quieras y te confirmaré lo que recibí.');
   };
+
+  recognizer.onend = () => {
+    listening = false;
+    setMicStatus('No escuchando', false);
+    $('toggleListenBtn').textContent = 'Iniciar escucha';
+  };
+
+  recognizer.onerror = (event) => {
+    setMicStatus(`Error de micrófono: ${event.error}`, false);
+    addChat('Sistema', `No pude usar el micrófono (${event.error}). Revisa permisos del navegador.`);
+  };
+
+  recognizer.onresult = (event) => {
+    let finalTranscript = '';
+    let interim = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) finalTranscript += transcript;
+      else interim += transcript;
+    }
+
+    if (interim) {
+      $('lastHeard').textContent = `Escuchando: ${interim}`;
+    }
+
+    if (finalTranscript.trim()) {
+      $('lastHeard').textContent = finalTranscript.trim();
+      addChat('Sistema', `✅ Te escuché: "${finalTranscript.trim()}"`);
+      processPrompt(finalTranscript, 'Usuario (voz)');
+    }
+  };
+}
+
+function setupVoice() {
+  const status = $('voiceStatus');
+  const toggleVoiceBtn = $('toggleVoiceBtn');
+  const toggleListenBtn = $('toggleListenBtn');
+  const face = $('hologramFace');
+
+  maybeInitRecognizer();
+
+  toggleVoiceBtn.addEventListener('click', () => {
+    voiceEnabled = !voiceEnabled;
+    status.textContent = voiceEnabled ? 'Voz activada' : 'Voz desactivada';
+    status.classList.toggle('voice-on', voiceEnabled);
+    toggleVoiceBtn.textContent = voiceEnabled ? 'Desactivar voz' : 'Activar voz';
+    face.style.boxShadow = voiceEnabled ? '0 0 18px #6cffdf' : 'none';
+
+    if (voiceEnabled) {
+      addChat('Sistema', 'Voz de respuesta activada.');
+    } else if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+    }
+  });
+
+  toggleListenBtn.addEventListener('click', () => {
+    if (!recognizer) {
+      addChat('Sistema', 'Este navegador no soporta reconocimiento de voz. Usa chat escrito.');
+      return;
+    }
+
+    if (!listening) {
+      recognizer.start();
+    } else {
+      recognizer.stop();
+      addChat('Sistema', '🎤 Escucha detenida.');
+    }
+  });
 }
 
 function setupForms() {
   $('chatForm').addEventListener('submit', (ev) => {
     ev.preventDefault();
     const input = $('chatInput');
-    const prompt = input.value.trim();
-    if (!prompt) return;
-
-    addChat('Usuario', prompt);
-    const answer = aiResponse(prompt);
-    addChat('CEO AI', answer);
-    speak(answer);
+    processPrompt(input.value, 'Usuario');
     input.value = '';
   });
 

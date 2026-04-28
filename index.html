@@ -19,14 +19,27 @@
     <section class="card holo-panel">
       <h2>Holograma Trader (tiempo real)</h2>
       <div class="hologram-wrap">
-        <div class="hologram" id="hologramFace">
-          <div class="head"></div>
+        <div class="hologram" id="hologramFace" aria-label="Avatar holográfico humano">
+          <div class="scanlines"></div>
+          <div class="human-figure">
+            <div class="h-head"></div>
+            <div class="h-neck"></div>
+            <div class="h-torso"></div>
+            <div class="h-arm h-arm-left"></div>
+            <div class="h-arm h-arm-right"></div>
+          </div>
           <div class="pulse"></div>
         </div>
+
         <div class="status-block">
-          <p><strong>Estado:</strong> <span id="voiceStatus">Voz desactivada</span></p>
+          <p><strong>Estado voz:</strong> <span id="voiceStatus">Voz desactivada</span></p>
+          <p><strong>Micrófono:</strong> <span id="micStatus">No escuchando</span></p>
+          <p><strong>Última instrucción:</strong> <span id="lastHeard">—</span></p>
           <p><strong>Modo:</strong> Friendly + Institucional + Algorítmico</p>
-          <button id="toggleVoiceBtn">Activar voz</button>
+          <div class="inline-actions">
+            <button id="toggleVoiceBtn">Activar voz</button>
+            <button id="toggleListenBtn">Iniciar escucha</button>
+          </div>
         </div>
       </div>
       <div class="knowledge-grid">

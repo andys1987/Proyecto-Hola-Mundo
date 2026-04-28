@@ -90,6 +90,13 @@ Listo: ahí vas a ver el proyecto en tiempo real.
 
 > No necesitas instalar Node, React ni descargar nada adicional para esta versión.
 
+### Probar voz (nuevo flujo)
+
+1. Presiona **Activar voz** para respuesta hablada (TTS).
+2. Presiona **Iniciar escucha** para activar micrófono.
+3. Habla y revisa **Última instrucción** + mensaje `✅ Te escuché...` en el chat.
+4. Si no escucha, habilita permisos de micrófono del navegador para `localhost`.
+
 Si no abre, revisa:
 - Que el comando de `python3 -m http.server 8000` siga corriendo.
 - Que estés entrando exactamente a `http://localhost:8000`.
