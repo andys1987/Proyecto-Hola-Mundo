@@ -12,6 +12,16 @@ Este repositorio incluye un prototipo web para orquestar el ciclo de vida de pro
 - Repositorio de conocimiento con carga de archivos para retroalimentación local.
 - Descarga de plantillas `.mq5` y placeholder `.ex5`.
 
+## HOLO Project (fase visual + voz mejorada)
+
+Se agregó una base de avatar holográfico 3D en tiempo real usando **Three.js** con módulos separados:
+
+- `hologram.js`: avatar full-body, idle breathing, blink, head tracking y glitches sutiles.
+- `voice.js`: voz estilo asistente con cadencia controlada + timeline de visemas para lip-sync aproximado.
+- `app.js`: integra conversación, TTS, reconocimiento de voz y sincronización de visemas.
+
+> Nota: `hologram.js` importa Three.js desde CDN, por lo que necesitas conexión a internet al abrir la app.
+
 ## Descargar el proyecto en un solo archivo (.zip)
 
 Si quieres descargar todo junto para probarlo en tu PC:

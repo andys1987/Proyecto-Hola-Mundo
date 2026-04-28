@@ -1,3 +1,6 @@
+import { HologramAvatar } from './hologram.js';
+import { HoloVoice } from './voice.js';
+
 const storageKey = 'holotrader-workspace-v1';
 
 const initialState = {
@@ -24,6 +27,8 @@ const $ = (id) => document.getElementById(id);
 let voiceEnabled = false;
 let recognizer;
 let listening = false;
+let avatar;
+const holoVoice = new HoloVoice();
 
 function loadState() {
   try {
@@ -144,11 +149,13 @@ function aiResponse(prompt) {
 }
 
 function speak(text) {
-  if (!voiceEnabled || !window.speechSynthesis) return;
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'es-ES';
-  utter.rate = 1;
-  speechSynthesis.speak(utter);
+  if (!voiceEnabled) return;
+  avatar?.setSpeaking(true);
+  holoVoice.speak(text, {
+    onStart: () => avatar?.setSpeaking(true),
+    onViseme: (viseme) => avatar?.setViseme(viseme),
+    onEnd: () => avatar?.setSpeaking(false)
+  });
 }
 
 function processPrompt(prompt, source = 'Usuario') {
@@ -221,7 +228,6 @@ function setupVoice() {
   const status = $('voiceStatus');
   const toggleVoiceBtn = $('toggleVoiceBtn');
   const toggleListenBtn = $('toggleListenBtn');
-  const face = $('hologramFace');
 
   maybeInitRecognizer();
 
@@ -230,13 +236,9 @@ function setupVoice() {
     status.textContent = voiceEnabled ? 'Voz activada' : 'Voz desactivada';
     status.classList.toggle('voice-on', voiceEnabled);
     toggleVoiceBtn.textContent = voiceEnabled ? 'Desactivar voz' : 'Activar voz';
-    face.style.boxShadow = voiceEnabled ? '0 0 18px #6cffdf' : 'none';
 
-    if (voiceEnabled) {
-      addChat('Sistema', 'Voz de respuesta activada.');
-    } else if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-    }
+    if (voiceEnabled) addChat('Sistema', 'Voz de respuesta activada.');
+    else window.speechSynthesis.cancel();
   });
 
   toggleListenBtn.addEventListener('click', () => {
@@ -245,9 +247,8 @@ function setupVoice() {
       return;
     }
 
-    if (!listening) {
-      recognizer.start();
-    } else {
+    if (!listening) recognizer.start();
+    else {
       recognizer.stop();
       addChat('Sistema', '🎤 Escucha detenida.');
     }
@@ -341,6 +342,7 @@ function downloadFile(name, content, type) {
 }
 
 function init() {
+  avatar = new HologramAvatar($('holoViewport'));
   setupVoice();
   setupForms();
   renderChat();

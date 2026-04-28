@@ -20,15 +20,7 @@
       <h2>Holograma Trader (tiempo real)</h2>
       <div class="hologram-wrap">
         <div class="hologram" id="hologramFace" aria-label="Avatar holográfico humano">
-          <div class="scanlines"></div>
-          <div class="human-figure">
-            <div class="h-head"></div>
-            <div class="h-neck"></div>
-            <div class="h-torso"></div>
-            <div class="h-arm h-arm-left"></div>
-            <div class="h-arm h-arm-right"></div>
-          </div>
-          <div class="pulse"></div>
+          <div id="holoViewport" class="holo-viewport"></div>
         </div>
 
         <div class="status-block">
@@ -136,6 +128,6 @@
     </article>
   </template>
 
-  <script src="app.js" defer></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -57,84 +57,23 @@ button:hover { border-color: var(--accent); }
 
 .hologram-wrap { display: flex; gap: 1rem; align-items: center; }
 .hologram {
-  width: 170px;
-  height: 230px;
+  width: 230px;
+  height: 330px;
   border: 1px solid #5ecbff70;
   border-radius: 1rem;
   position: relative;
   overflow: hidden;
   background: radial-gradient(circle at 50% 20%, #2f85be66, #12314f 70%);
-  box-shadow: inset 0 0 40px #7cd9ff25;
+  box-shadow: inset 0 0 40px #7cd9ff25, 0 0 18px #5ee5ff45;
 }
-.scanlines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 4px,
-    rgba(146, 226, 255, 0.06) 5px
-  );
-  pointer-events: none;
+.holo-viewport {
+  width: 100%;
+  height: 100%;
 }
-.human-figure {
-  position: absolute;
-  inset: 18px 28px;
-  filter: drop-shadow(0 0 10px #5ee5ff) drop-shadow(0 0 22px #54cdff66);
-  animation: hologramFloat 2.8s ease-in-out infinite;
-}
-.h-head {
-  width: 58px;
-  height: 62px;
-  border-radius: 44% 44% 50% 50%;
-  border: 2px solid #6edbff;
-  margin: 0 auto;
-  background: radial-gradient(circle at 50% 36%, #58b0ff8e, #234f7c5f 65%);
-}
-.h-neck {
-  width: 18px;
-  height: 10px;
-  border: 2px solid #6edbff;
-  border-top: 0;
-  margin: 0 auto;
-}
-.h-torso {
-  width: 96px;
-  height: 106px;
-  border: 2px solid #71dbff;
-  border-radius: 36% 36% 28% 28%;
-  margin: -2px auto 0;
-  background: linear-gradient(180deg, #4aa4df57, #173d5c30);
-}
-.h-arm {
-  position: absolute;
-  top: 78px;
-  width: 18px;
-  height: 82px;
-  border: 2px solid #69d9ff;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #4aa4df43, #173d5c30);
-}
-.h-arm-left { left: 4px; transform: rotate(10deg); }
-.h-arm-right { right: 4px; transform: rotate(-10deg); }
-.pulse {
-  position: absolute;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  border: 1px solid #75daff85;
-  top: 14px;
-  left: 20px;
-  animation: pulse 2.3s ease infinite;
-}
-
-@keyframes hologramFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(6px); }
-}
-@keyframes pulse {
-  from { transform: scale(.8); opacity: .9; }
-  to { transform: scale(1.28); opacity: 0; }
+.holo-viewport canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 .knowledge-grid {
