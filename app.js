@@ -1,5 +1,6 @@
-import { HologramAvatar } from './hologram.js';
+import { Avatar3D } from './avatar3d.js';
 import { VoiceEngine } from './voice.js';
+import { LipSyncController } from './lipsync.js';
 
 const storageKey = 'holotrader-workspace-v1';
 const $ = (id) => document.getElementById(id);
@@ -46,13 +47,14 @@ class CommandCenterLayout {
     this.voiceEnabled = false;
     this.listening = false;
     this.avatar = null;
+    this.lipSync = null;
     this.recognizer = null;
   }
   loadState(){ try{const r=localStorage.getItem(storageKey); return r?JSON.parse(r):{chat:[],projects:[],bots:[],agents:[{name:'Scout-Synth',role:'Research índices'},{name:'MQL5-Forge',role:'Programador'},{name:'Merge-Core',role:'Integrador'}],knowledge:[]};}catch{return {chat:[],projects:[],bots:[],agents:[],knowledge:[]};}}
   persist(){ localStorage.setItem(storageKey, JSON.stringify(this.state)); }
   addChat(role,text){ this.state.chat.push({role,text,ts:new Date().toISOString()}); this.persist(); this.chat.refresh(); }
   aiResponse(prompt){ if(/mql5|ea|bot/i.test(prompt)) return 'Perfecto. Armemos arquitectura por módulos: señales, riesgo, ejecución y validación walk-forward.'; if(/agente/i.test(prompt)) return 'Puedo crear agentes Research, Coder, Integrator y QA para este proyecto.'; return 'Recibido. Lo convierto en backlog técnico y versión de implementación.'; }
-  speak(text){ if(!this.voiceEnabled) return; this.avatar?.setSpeaking(true); this.voiceEngine.speakCEO(text,{onStart:()=>this.avatar?.setSpeaking(true),onViseme:(v)=>this.avatar?.setViseme(v),onEnd:()=>this.avatar?.setSpeaking(false)}); }
+  speak(text){ if(!this.voiceEnabled) return; this.voiceEngine.speakCEO(text,{onStart:()=>this.lipSync?.start(),onAudioLevel:(v)=>this.avatar?.setAudioLevel(v),onEnd:()=>this.lipSync?.stop()}); }
   processPrompt(text,source='Usuario'){ this.addChat(source,text); const answer=this.aiResponse(text); this.addChat('CEO AI',answer); this.speak(answer); }
   render() {
     const html = `
@@ -86,7 +88,8 @@ class CommandCenterLayout {
   }
 
   bind() {
-    this.avatar = new HologramAvatar($('holoViewport'));
+    this.avatar = new Avatar3D($('holoViewport'));
+    this.lipSync = new LipSyncController(this.avatar);
     this.chat.bind(); this.projects.bind(); this.agents.bind(); this.bots.bind(); this.knowledge.bind();
     this.bindTabs();
     this.bindVoice();
@@ -94,7 +97,8 @@ class CommandCenterLayout {
 
     if (!this.state.chat.length) {
       const msg = 'Hola Andrés. Soy HoloTrader CEO AI. Estoy listo para ayudarte a diseñar, mejorar y gobernar tus Expert Advisors en MQL5.';
-      this.processPrompt(msg, 'CEO AI');
+      this.addChat('CEO AI', msg);
+      this.speak(msg);
     }
   }
   bindTabs(){ document.querySelectorAll('.tab-btn').forEach((b)=>b.onclick=()=>{document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); $(b.dataset.tab).classList.add('active');}); }

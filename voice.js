@@ -8,49 +8,41 @@ export class VoiceEngine {
   loadVoices() { this.voices = window.speechSynthesis.getVoices(); }
 
   pickBestVoice() {
-    const byQuality = this.voices.find((v) => /neural|premium|natural|enhanced/i.test(v.name) && /^es-(AR|ES)/i.test(v.lang));
-    if (byQuality) return byQuality;
-    const latam = this.voices.find((v) => /^es-AR/i.test(v.lang));
-    if (latam) return latam;
-    const spain = this.voices.find((v) => /^es-ES/i.test(v.lang));
-    if (spain) return spain;
-    return this.voices.find((v) => /^es/i.test(v.lang)) || null;
+    const quality = this.voices.find((v) => /neural|premium|natural|enhanced/i.test(v.name) && /^es-(AR|ES)/i.test(v.lang));
+    if (quality) return quality;
+    return this.voices.find((v) => /^es-AR|^es-ES|^es/i.test(v.lang)) || null;
   }
 
-  visemeTimeline(text) {
-    const list = [];
-    let t = 220;
-    for (const c of text.toUpperCase()) {
-      if ('AEIOU'.includes(c)) { list.push({ t, v: c }); t += 105; }
-      else if ('MPB'.includes(c)) { list.push({ t, v: 'M' }); t += 110; }
-      else if (c === ',' || c === '.') t += 200;
-      else if (c === ' ') t += 70;
-      else t += 45;
+  async speakCEO(text, hooks = {}) {
+    const { onStart, onEnd, onAudioLevel } = hooks;
+    onStart?.();
+
+    // Hook placeholder for external TTS providers (OpenAI/ElevenLabs) when backend is added.
+    const externalTTSEnabled = false;
+    if (externalTTSEnabled) {
+      // Keep this branch for future API integration.
     }
-    list.push({ t: t + 120, v: 'rest' });
-    return list;
-  }
 
-  speakCEO(text, hooks = {}) {
-    if (!window.speechSynthesis) return;
-    const { onStart, onEnd, onViseme } = hooks;
+    if (!window.speechSynthesis) { onEnd?.(); return; }
+
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'es-AR';
-    utter.rate = 0.95;
-    utter.pitch = 0.99;
+    utter.rate = 0.93;
+    utter.pitch = 1.0;
     utter.volume = 1;
 
-    const voice = this.pickBestVoice();
-    if (voice) {
-      utter.voice = voice;
-      utter.lang = voice.lang;
-    }
+    const v = this.pickBestVoice();
+    if (v) { utter.voice = v; utter.lang = v.lang; }
 
+    let levelTimer = null;
     utter.onstart = () => {
-      onStart?.();
-      this.visemeTimeline(text).forEach(({ t, v }) => setTimeout(() => onViseme?.(v), t));
+      levelTimer = setInterval(() => onAudioLevel?.(0.25 + Math.random() * 0.7), 80);
     };
-    utter.onend = () => { onViseme?.('rest'); onEnd?.(); };
+    utter.onend = () => {
+      if (levelTimer) clearInterval(levelTimer);
+      onAudioLevel?.(0);
+      onEnd?.();
+    };
 
     setTimeout(() => window.speechSynthesis.speak(utter), 260);
   }

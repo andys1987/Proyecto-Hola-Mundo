@@ -243,3 +243,14 @@ Ctrl + C
 ## Nota importante
 
 Este proyecto es una base de producto. No ejecuta operaciones reales ni reemplaza asesoría financiera profesional. Antes de operar en brokers, valida cumplimiento legal, riesgo y pruebas robustas.
+
+## Avatar 3D profesional (GLB real)
+
+Esta versión carga un avatar humano **GLB real** (CesiumMan) con `GLTFLoader` y no usa SVG/CSS para el cuerpo:
+
+- `avatar3d.js`: carga GLB, aplica material holográfico shader-like, partículas, glow y tracking.
+- `lipsync.js`: controlador de lipsync/audio-reactive para estado speaking.
+- `voice.js`: `speakCEO(text)` con selección de voz natural en español y fallback Web Speech.
+
+> Fuente placeholder GLB: Khronos glTF Sample Models (`CesiumMan.glb`).
+
