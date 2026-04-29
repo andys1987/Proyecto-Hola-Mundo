@@ -1,3 +1,9 @@
+## Command Center v2
+
+- Layout rediseñado: estado izquierda, avatar holográfico central y chat derecha.
+- Módulos secundarios en tabs (Proyectos, Agentes, Bots, Repositorio).
+- Voz ejecutiva `speakCEO(text)` y sincronización de visemas con avatar.
+
 # HoloTrader CEO AI (prototipo web)
 
 Este repositorio incluye un prototipo web para orquestar el ciclo de vida de proyectos de trading algorítmico.

@@ -1,355 +1,118 @@
 import { HologramAvatar } from './hologram.js';
-import { HoloVoice } from './voice.js';
+import { VoiceEngine } from './voice.js';
 
 const storageKey = 'holotrader-workspace-v1';
-
-const initialState = {
-  chat: [
-    {
-      role: 'CEO AI',
-      text: 'Bienvenido. Soy tu CEO de agentes para trading. Puedo ayudarte a definir EAs, módulos y planes de mejora.',
-      ts: new Date().toISOString()
-    }
-  ],
-  projects: [],
-  bots: [],
-  agents: [
-    { name: 'Scout-Synth', role: 'Investigación de índices sintéticos' },
-    { name: 'MQL5-Forge', role: 'Programación de módulos' },
-    { name: 'Merge-Core', role: 'Integración de módulos' }
-  ],
-  knowledge: []
-};
-
-const state = loadState();
 const $ = (id) => document.getElementById(id);
 
-let voiceEnabled = false;
-let recognizer;
-let listening = false;
-let avatar;
-const holoVoice = new HoloVoice();
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    return raw ? JSON.parse(raw) : structuredClone(initialState);
-  } catch {
-    return structuredClone(initialState);
+class ChatPanel {
+  constructor(state, onPrompt) { this.state = state; this.onPrompt = onPrompt; }
+  render() {
+    return `<section class="panel glass chat-panel"><h2>Conversación con CEO AI</h2><div id="chatLog" class="chat-log"></div><form id="chatForm" class="chat-form"><input id="chatInput" required placeholder="Escribe o dicta instrucciones..."/><button>Enviar</button></form></section>`;
+  }
+  bind() { $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('chatInput').value.trim(); if (!v) return; this.onPrompt(v, 'Usuario'); $('chatInput').value=''; }); this.refresh(); }
+  refresh() {
+    const log = $('chatLog'); log.innerHTML = '';
+    this.state.chat.slice(-30).forEach((m)=>{ const n=$('chatItemTemplate').content.cloneNode(true); n.querySelector('.meta').textContent=`${m.role} · ${new Date(m.ts).toLocaleString()}`; n.querySelector('.text').textContent=m.text; log.appendChild(n); });
+    log.scrollTop=log.scrollHeight;
   }
 }
 
-function persist() {
-  localStorage.setItem(storageKey, JSON.stringify(state));
+class SystemStatusPanel {
+  render() {
+    return `<section class="panel glass status-panel"><h3>Estado del sistema</h3><p><strong>Voz:</strong> <span id="voiceStatus">desactivada</span></p><p><strong>Micrófono:</strong> <span id="micStatus">No escuchando</span></p><p><strong>Última instrucción:</strong> <span id="lastHeard">—</span></p><div class="inline"><button id="toggleVoiceBtn">Activar voz</button><button id="toggleListenBtn">Iniciar escucha</button></div><p class="muted">MQL5 · Institucional · Algorítmico</p></section>`;
+  }
 }
 
-function addChat(role, text) {
-  state.chat.push({ role, text, ts: new Date().toISOString() });
-  persist();
-  renderChat();
+class ProjectTabs {
+  constructor(state, persist, addChat) { this.state=state; this.persist=persist; this.addChat=addChat; }
+  render() {
+    return `<section class="panel glass"><h3>Proyectos</h3><div class="board"><div><h4>Diseño</h4><ul id="col-design"></ul></div><div><h4>Desarrollo</h4><ul id="col-dev"></ul></div><div><h4>Terminado</h4><ul id="col-done"></ul></div></div><form id="projectForm" class="inline"><input id="projectName" placeholder="Nuevo proyecto EA" required/><select id="projectState"><option value="design">Diseño</option><option value="dev">Desarrollo</option><option value="done">Terminado</option></select><button>Agregar</button></form></section>`;
+  }
+  bind() { $('projectForm').addEventListener('submit', (e)=>{e.preventDefault();const n=$('projectName').value.trim(); if(!n)return; this.state.projects.push({name:n,state:$('projectState').value}); this.persist(); this.refresh(); e.target.reset();}); this.refresh(); }
+  refresh() {
+    const map={design:$('col-design'),dev:$('col-dev'),done:$('col-done')}; Object.values(map).forEach(u=>u.innerHTML='');
+    this.state.projects.forEach((p,i)=>{const li=document.createElement('li'); li.textContent=p.name; ['design','dev','done'].forEach(s=>{if(s===p.state)return; const b=document.createElement('button'); b.textContent=s; b.onclick=()=>{this.state.projects[i].state=s; this.persist(); this.refresh();}; li.appendChild(b);}); map[p.state].appendChild(li);});
+  }
 }
 
-function renderChat() {
-  const log = $('chatLog');
-  log.innerHTML = '';
-  const tpl = $('chatItemTemplate');
+class AgentCenter { constructor(state,persist){this.state=state;this.persist=persist;} render(){return `<section class="panel glass"><h3>Centro de agentes</h3><form id="agentForm" class="inline"><input id="agentName" required placeholder="Nombre del agente"/><select id="agentRole"><option value="research">Research índices</option><option value="coder">Programador</option><option value="integrator">Integrador</option><option value="qa">QA</option></select><button>Crear</button></form><ul id="agentList" class="list"></ul></section>`;} bind(){ $('agentForm').addEventListener('submit',(e)=>{e.preventDefault();const n=$('agentName').value.trim();if(!n)return;this.state.agents.push({name:n,role:$('agentRole').value});this.persist();this.refresh();e.target.reset();}); this.refresh();} refresh(){const ul=$('agentList'); ul.innerHTML=''; this.state.agents.forEach(a=>{const li=document.createElement('li'); li.textContent=`${a.name} — ${a.role}`; ul.appendChild(li);});}}
+class BotFactory { constructor(state,persist){this.state=state;this.persist=persist;} render(){return `<section class="panel glass"><h3>Fábrica de bots</h3><form id="botForm" class="inline"><input id="botName" required placeholder="EA"/><input id="botVersion" required placeholder="v1.0.0"/><input id="botFocus" required placeholder="Objetivo"/><button>Registrar</button></form><ul id="botTimeline" class="timeline"></ul><div class="inline"><button id="downloadMql5">Descargar .mq5</button><button id="downloadEx5">Descargar .ex5</button></div></section>`;} bind(){ $('botForm').addEventListener('submit',(e)=>{e.preventDefault();this.state.bots.push({name:$('botName').value.trim(),version:$('botVersion').value.trim(),focus:$('botFocus').value.trim(),ts:new Date().toISOString()});this.persist();this.refresh();e.target.reset();}); $('downloadMql5').onclick=()=>this.download('ea_template.mq5','// plantilla\n#property strict\nvoid OnTick(){}','text/plain'); $('downloadEx5').onclick=()=>this.download('ea_placeholder.ex5','Compilar en MetaEditor','application/octet-stream'); this.refresh();} refresh(){const ul=$('botTimeline'); ul.innerHTML=''; this.state.bots.slice().reverse().forEach(b=>{const li=document.createElement('li'); li.innerHTML=`<strong>${b.name} ${b.version}</strong><br>${b.focus}`; ul.appendChild(li);});} download(name,content,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();}}
+class KnowledgeRepository { constructor(state,persist){this.state=state;this.persist=persist;} render(){return `<section class="panel glass"><h3>Repositorio de conocimiento</h3><form id="uploadForm" class="inline"><input id="knowledgeFile" type="file" multiple required/><button>Cargar</button></form><p class="muted">Indexado local para contexto.</p><ul id="knowledgeList" class="list"></ul></section>`;} bind(){ $('uploadForm').addEventListener('submit', async (e)=>{e.preventDefault(); const files=$('knowledgeFile').files; for(const f of files){const t=await f.text().catch(()=> ''); this.state.knowledge.push({name:f.name,preview:t.slice(0,110)});} this.persist(); this.refresh(); e.target.reset();}); this.refresh();} refresh(){const ul=$('knowledgeList'); ul.innerHTML=''; this.state.knowledge.forEach(k=>{const li=document.createElement('li'); li.innerHTML=`<strong>${k.name}</strong><br><small>${k.preview}</small>`; ul.appendChild(li);});}}
 
-  state.chat.slice(-30).forEach((msg) => {
-    const node = tpl.content.cloneNode(true);
-    node.querySelector('.meta').textContent = `${msg.role} · ${new Date(msg.ts).toLocaleString()}`;
-    node.querySelector('.text').textContent = msg.text;
-    log.appendChild(node);
-  });
+class CommandCenterLayout {
+  constructor() {
+    this.state = this.loadState();
+    this.voiceEngine = new VoiceEngine();
+    this.voiceEnabled = false;
+    this.listening = false;
+    this.avatar = null;
+    this.recognizer = null;
+  }
+  loadState(){ try{const r=localStorage.getItem(storageKey); return r?JSON.parse(r):{chat:[],projects:[],bots:[],agents:[{name:'Scout-Synth',role:'Research índices'},{name:'MQL5-Forge',role:'Programador'},{name:'Merge-Core',role:'Integrador'}],knowledge:[]};}catch{return {chat:[],projects:[],bots:[],agents:[],knowledge:[]};}}
+  persist(){ localStorage.setItem(storageKey, JSON.stringify(this.state)); }
+  addChat(role,text){ this.state.chat.push({role,text,ts:new Date().toISOString()}); this.persist(); this.chat.refresh(); }
+  aiResponse(prompt){ if(/mql5|ea|bot/i.test(prompt)) return 'Perfecto. Armemos arquitectura por módulos: señales, riesgo, ejecución y validación walk-forward.'; if(/agente/i.test(prompt)) return 'Puedo crear agentes Research, Coder, Integrator y QA para este proyecto.'; return 'Recibido. Lo convierto en backlog técnico y versión de implementación.'; }
+  speak(text){ if(!this.voiceEnabled) return; this.avatar?.setSpeaking(true); this.voiceEngine.speakCEO(text,{onStart:()=>this.avatar?.setSpeaking(true),onViseme:(v)=>this.avatar?.setViseme(v),onEnd:()=>this.avatar?.setSpeaking(false)}); }
+  processPrompt(text,source='Usuario'){ this.addChat(source,text); const answer=this.aiResponse(text); this.addChat('CEO AI',answer); this.speak(answer); }
+  render() {
+    const html = `
+      <aside class="panel glass"><div id="leftStatus"></div></aside>
+      <section class="avatar-stage"><p class="avatar-caption">HOLO CORE / REAL-TIME AVATAR</p><div id="holoViewport" class="holo-viewport"></div></section>
+      <section id="rightChat"></section>
+      <section class="modules panel glass">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="projects">Proyectos</button>
+          <button class="tab-btn" data-tab="agents">Agentes</button>
+          <button class="tab-btn" data-tab="bots">Bots</button>
+          <button class="tab-btn" data-tab="knowledge">Repositorio</button>
+        </div>
+        <div id="projects" class="tab-content active"></div>
+        <div id="agents" class="tab-content"></div>
+        <div id="bots" class="tab-content"></div>
+        <div id="knowledge" class="tab-content"></div>
+      </section>`;
+    $('commandCenter').innerHTML = html;
 
-  log.scrollTop = log.scrollHeight;
-}
+    $('leftStatus').innerHTML = new SystemStatusPanel().render();
+    this.chat = new ChatPanel(this.state, (p,s)=>this.processPrompt(p,s));
+    $('rightChat').innerHTML = this.chat.render();
+    this.projects = new ProjectTabs(this.state, ()=>this.persist(), (r,t)=>this.addChat(r,t));
+    this.agents = new AgentCenter(this.state, ()=>this.persist());
+    this.bots = new BotFactory(this.state, ()=>this.persist());
+    this.knowledge = new KnowledgeRepository(this.state, ()=>this.persist());
+    $('projects').innerHTML = this.projects.render(); $('agents').innerHTML = this.agents.render(); $('bots').innerHTML = this.bots.render(); $('knowledge').innerHTML = this.knowledge.render();
 
-function renderProjects() {
-  const map = {
-    design: $('col-design'),
-    dev: $('col-dev'),
-    done: $('col-done')
-  };
-
-  Object.values(map).forEach((ul) => (ul.innerHTML = ''));
-  state.projects.forEach((p, index) => {
-    const li = document.createElement('li');
-    li.textContent = `${p.name}`;
-
-    const controls = document.createElement('div');
-    controls.style.marginTop = '.4rem';
-
-    ['design', 'dev', 'done'].forEach((next) => {
-      if (next === p.state) return;
-      const btn = document.createElement('button');
-      btn.textContent = next;
-      btn.addEventListener('click', () => {
-        state.projects[index].state = next;
-        persist();
-        renderProjects();
-      });
-      controls.appendChild(btn);
-    });
-
-    li.appendChild(controls);
-    map[p.state].appendChild(li);
-  });
-}
-
-function renderBots() {
-  const ul = $('botTimeline');
-  ul.innerHTML = '';
-  state.bots
-    .slice()
-    .reverse()
-    .forEach((bot) => {
-      const li = document.createElement('li');
-      li.innerHTML = `<strong>${bot.name} ${bot.version}</strong><br>${bot.focus}<br><small>${new Date(bot.ts).toLocaleString()}</small>`;
-      ul.appendChild(li);
-    });
-}
-
-function renderAgents() {
-  const ul = $('agentList');
-  ul.innerHTML = '';
-  state.agents.forEach((agent) => {
-    const li = document.createElement('li');
-    li.textContent = `${agent.name} — ${agent.role}`;
-    ul.appendChild(li);
-  });
-}
-
-function renderKnowledge() {
-  const ul = $('knowledgeList');
-  ul.innerHTML = '';
-  state.knowledge.forEach((item) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<strong>${item.name}</strong><br><small>${item.preview}</small>`;
-    ul.appendChild(li);
-  });
-}
-
-function aiResponse(prompt) {
-  const lower = prompt.toLowerCase();
-  const indexedDocs = state.knowledge.map((k) => k.name).join(', ') || 'sin documentos aún';
-
-  if (lower.includes('mql5') || lower.includes('ea') || lower.includes('bot')) {
-    return `Plan sugerido: (1) especificación del EA, (2) módulos de entrada/salida/riesgo, (3) pruebas forward y walk-forward, (4) versión incremental. Documentos indexados: ${indexedDocs}.`;
+    this.bind();
   }
 
-  if (lower.includes('agente')) {
-    return 'Puedo crear agentes de Research, Coder, Integrator y QA. Indícame nombre + misión y lo registro en el Centro de agentes.';
+  bind() {
+    this.avatar = new HologramAvatar($('holoViewport'));
+    this.chat.bind(); this.projects.bind(); this.agents.bind(); this.bots.bind(); this.knowledge.bind();
+    this.bindTabs();
+    this.bindVoice();
+    $('saveSnapshotBtn').onclick = ()=>this.addChat('Sistema','Snapshot guardado.');
+
+    if (!this.state.chat.length) {
+      const msg = 'Hola Andrés. Soy HoloTrader CEO AI. Estoy listo para ayudarte a diseñar, mejorar y gobernar tus Expert Advisors en MQL5.';
+      this.processPrompt(msg, 'CEO AI');
+    }
   }
+  bindTabs(){ document.querySelectorAll('.tab-btn').forEach((b)=>b.onclick=()=>{document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active')); $(b.dataset.tab).classList.add('active');}); }
+  bindVoice(){
+    const status=$('voiceStatus'); const mic=$('micStatus');
+    $('toggleVoiceBtn').onclick=()=>{this.voiceEnabled=!this.voiceEnabled; status.textContent=this.voiceEnabled?'activa':'desactivada'; status.classList.toggle('voice-on',this.voiceEnabled); if(this.voiceEnabled){this.speak('Hola Andrés. Modo de voz ejecutiva activado.');}};
 
-  if (lower.includes('deriv') || lower.includes('weltrade') || lower.includes('vt')) {
-    return 'Te recomiendo definir primero: instrumento, horario, spread promedio, comisión, slippage y reglas de ejecución por broker para luego adaptar el EA por entorno.';
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      this.recognizer = new SR(); this.recognizer.lang='es-AR'; this.recognizer.interimResults=true; this.recognizer.continuous=true;
+      this.recognizer.onstart=()=>{this.listening=true; mic.textContent='Escuchando...'; mic.classList.add('listening-on');};
+      this.recognizer.onend=()=>{this.listening=false; mic.textContent='No escuchando'; mic.classList.remove('listening-on');};
+      this.recognizer.onresult=(e)=>{let final=''; let inter=''; for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript; if(e.results[i].isFinal) final+=t; else inter+=t;} if(inter) $('lastHeard').textContent=`Escuchando: ${inter}`; if(final.trim()){ $('lastHeard').textContent=final.trim(); this.addChat('Sistema',`✅ Te escuché: "${final.trim()}"`); this.processPrompt(final.trim(),'Usuario (voz)'); }};
+      this.recognizer.onerror=(e)=>this.addChat('Sistema',`Error de micrófono: ${e.error}`);
+    }
+
+    $('toggleListenBtn').onclick=()=>{ if(!this.recognizer){this.addChat('Sistema','Reconocimiento de voz no soportado en este navegador.');return;} if(this.listening) this.recognizer.stop(); else this.recognizer.start(); };
   }
-
-  return 'Recibido. Te propongo convertir tu idea en backlog técnico: objetivo, señales, gestión monetaria, validación y despliegue con control de versiones.';
 }
 
-function speak(text) {
-  if (!voiceEnabled) return;
-  avatar?.setSpeaking(true);
-  holoVoice.speak(text, {
-    onStart: () => avatar?.setSpeaking(true),
-    onViseme: (viseme) => avatar?.setViseme(viseme),
-    onEnd: () => avatar?.setSpeaking(false)
-  });
-}
-
-function processPrompt(prompt, source = 'Usuario') {
-  const cleanPrompt = prompt.trim();
-  if (!cleanPrompt) return;
-
-  addChat(source, cleanPrompt);
-  const answer = aiResponse(cleanPrompt);
-  addChat('CEO AI', answer);
-  speak(answer);
-}
-
-function setMicStatus(text, active = false) {
-  const mic = $('micStatus');
-  mic.textContent = text;
-  mic.classList.toggle('listening-on', active);
-}
-
-function maybeInitRecognizer() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition || recognizer) return;
-
-  recognizer = new SpeechRecognition();
-  recognizer.lang = 'es-ES';
-  recognizer.interimResults = true;
-  recognizer.continuous = true;
-  recognizer.maxAlternatives = 1;
-
-  recognizer.onstart = () => {
-    listening = true;
-    setMicStatus('Escuchando...', true);
-    $('toggleListenBtn').textContent = 'Detener escucha';
-    addChat('Sistema', '🎤 Escucha activada. Habla cuando quieras y te confirmaré lo que recibí.');
-  };
-
-  recognizer.onend = () => {
-    listening = false;
-    setMicStatus('No escuchando', false);
-    $('toggleListenBtn').textContent = 'Iniciar escucha';
-  };
-
-  recognizer.onerror = (event) => {
-    setMicStatus(`Error de micrófono: ${event.error}`, false);
-    addChat('Sistema', `No pude usar el micrófono (${event.error}). Revisa permisos del navegador.`);
-  };
-
-  recognizer.onresult = (event) => {
-    let finalTranscript = '';
-    let interim = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i += 1) {
-      const transcript = event.results[i][0].transcript;
-      if (event.results[i].isFinal) finalTranscript += transcript;
-      else interim += transcript;
-    }
-
-    if (interim) {
-      $('lastHeard').textContent = `Escuchando: ${interim}`;
-    }
-
-    if (finalTranscript.trim()) {
-      $('lastHeard').textContent = finalTranscript.trim();
-      addChat('Sistema', `✅ Te escuché: "${finalTranscript.trim()}"`);
-      processPrompt(finalTranscript, 'Usuario (voz)');
-    }
-  };
-}
-
-function setupVoice() {
-  const status = $('voiceStatus');
-  const toggleVoiceBtn = $('toggleVoiceBtn');
-  const toggleListenBtn = $('toggleListenBtn');
-
-  maybeInitRecognizer();
-
-  toggleVoiceBtn.addEventListener('click', () => {
-    voiceEnabled = !voiceEnabled;
-    status.textContent = voiceEnabled ? 'Voz activada' : 'Voz desactivada';
-    status.classList.toggle('voice-on', voiceEnabled);
-    toggleVoiceBtn.textContent = voiceEnabled ? 'Desactivar voz' : 'Activar voz';
-
-    if (voiceEnabled) addChat('Sistema', 'Voz de respuesta activada.');
-    else window.speechSynthesis.cancel();
-  });
-
-  toggleListenBtn.addEventListener('click', () => {
-    if (!recognizer) {
-      addChat('Sistema', 'Este navegador no soporta reconocimiento de voz. Usa chat escrito.');
-      return;
-    }
-
-    if (!listening) recognizer.start();
-    else {
-      recognizer.stop();
-      addChat('Sistema', '🎤 Escucha detenida.');
-    }
-  });
-}
-
-function setupForms() {
-  $('chatForm').addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const input = $('chatInput');
-    processPrompt(input.value, 'Usuario');
-    input.value = '';
-  });
-
-  $('projectForm').addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const name = $('projectName').value.trim();
-    const stateValue = $('projectState').value;
-    if (!name) return;
-    state.projects.push({ name, state: stateValue });
-    persist();
-    renderProjects();
-    ev.target.reset();
-  });
-
-  $('botForm').addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const name = $('botName').value.trim();
-    const version = $('botVersion').value.trim();
-    const focus = $('botFocus').value.trim();
-    state.bots.push({ name, version, focus, ts: new Date().toISOString() });
-    persist();
-    renderBots();
-    addChat('CEO AI', `Versión ${version} de ${name} registrada. Queda disponible para mejoras y releases futuras.`);
-    ev.target.reset();
-  });
-
-  $('agentForm').addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const name = $('agentName').value.trim();
-    const role = $('agentRole').value;
-    if (!name) return;
-    state.agents.push({ name, role });
-    persist();
-    renderAgents();
-    addChat('CEO AI', `Agente ${name} creado con rol: ${role}.`);
-    ev.target.reset();
-  });
-
-  $('uploadForm').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const files = $('knowledgeFile').files;
-    if (!files.length) return;
-
-    for (const file of files) {
-      const text = await file.text().catch(() => '');
-      const preview = text.slice(0, 120).replace(/\s+/g, ' ') || 'Archivo binario o sin texto previsualizable';
-      state.knowledge.push({ name: file.name, preview });
-    }
-
-    persist();
-    renderKnowledge();
-    addChat('CEO AI', `Se indexaron ${files.length} archivo(s). Los usaré como contexto operativo en próximos prompts.`);
-    ev.target.reset();
-  });
-
-  $('saveSnapshotBtn').addEventListener('click', () => {
-    persist();
-    addChat('Sistema', 'Snapshot guardado en LocalStorage.');
-  });
-
-  $('downloadMql5').addEventListener('click', () => {
-    const code = `// Plantilla base EA\n#property strict\ninput double Risk = 1.0;\nint OnInit(){ return(INIT_SUCCEEDED); }\nvoid OnTick(){ /* TODO: agregar señales y gestión */ }`;
-    downloadFile('ea_template.mq5', code, 'text/plain');
-  });
-
-  $('downloadEx5').addEventListener('click', () => {
-    const text = 'Placeholder EX5: compilar el .mq5 dentro de MetaEditor para generar el ejecutable real.';
-    downloadFile('ea_build_placeholder.ex5', text, 'application/octet-stream');
-  });
-}
-
-function downloadFile(name, content, type) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function init() {
-  avatar = new HologramAvatar($('holoViewport'));
-  setupVoice();
-  setupForms();
-  renderChat();
-  renderProjects();
-  renderBots();
-  renderAgents();
-  renderKnowledge();
-}
-
-init();
+new CommandCenterLayout().render();

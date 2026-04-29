@@ -9,203 +9,122 @@ export class HologramAvatar {
     this.mouse = new THREE.Vector2(0, 0);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x020714, 6, 18);
-
-    this.camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 100);
-    this.camera.position.set(0, 1.6, 6);
-
+    this.camera = new THREE.PerspectiveCamera(34, container.clientWidth / container.clientHeight, 0.1, 100);
+    this.camera.position.set(0, 1.4, 5.4);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
-    this.addLights();
+    this.initLights();
     this.buildAvatar();
-    this.addFX();
-    this.bindEvents();
+    this.buildParticles();
+    this.bind();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
 
-  addLights() {
-    const hemi = new THREE.HemisphereLight(0x76d3ff, 0x020c2b, 1.1);
-    this.scene.add(hemi);
-
-    const key = new THREE.DirectionalLight(0x6be7ff, 1.4);
-    key.position.set(3, 6, 4);
-    this.scene.add(key);
-
-    const rim = new THREE.PointLight(0x49b5ff, 2, 18, 2);
-    rim.position.set(-2, 2.5, -1.5);
-    this.scene.add(rim);
+  initLights() {
+    this.scene.add(new THREE.HemisphereLight(0x84e0ff, 0x050b1d, 1.1));
+    const key = new THREE.DirectionalLight(0x79deff, 1.5); key.position.set(3, 4, 2); this.scene.add(key);
+    this.pulseLight = new THREE.PointLight(0x46c7ff, 2, 22); this.pulseLight.position.set(0, 1.7, 1.2); this.scene.add(this.pulseLight);
   }
 
-  hologramMaterial(opacity = 0.45) {
-    return new THREE.MeshPhysicalMaterial({
-      color: 0x6ed9ff,
-      emissive: 0x2aa8ff,
-      emissiveIntensity: 0.9,
-      transparent: true,
-      opacity,
-      roughness: 0.25,
-      metalness: 0.1,
-      clearcoat: 0.8,
-      clearcoatRoughness: 0.3
-    });
+  holoMat(opacity = 0.45) {
+    return new THREE.MeshPhysicalMaterial({ color: 0x8edfff, emissive: 0x2a9eff, emissiveIntensity: 1, transparent: true, opacity, roughness: 0.25, metalness: 0.08, clearcoat: 1 });
   }
 
   buildAvatar() {
-    this.avatarRoot = new THREE.Group();
-    this.avatarRoot.position.y = -1.15;
+    this.root = new THREE.Group();
+    this.root.position.y = -1.2;
 
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.68, 1.45, 10, 16), this.hologramMaterial(0.42));
-    torso.position.y = 1.45;
-
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.2, 14), this.hologramMaterial(0.45));
-    neck.position.y = 2.36;
-
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 26, 26), this.hologramMaterial(0.45));
-    head.position.y = 2.95;
-
-    const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.35, 22, 16), this.hologramMaterial(0.38));
-    jaw.position.set(0, 2.68, 0.15);
-    jaw.scale.set(1.05, 0.68, 0.75);
-
-    const eyeGeo = new THREE.SphereGeometry(0.05, 16, 16);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xb7f4ff });
-    this.eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    this.eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    this.eyeL.position.set(-0.14, 2.98, 0.44);
-    this.eyeR.position.set(0.14, 2.98, 0.44);
-
-    this.mouth = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0xd4ffff }));
-    this.mouth.position.set(0, 2.76, 0.45);
+    const shoulders = new THREE.Mesh(new THREE.CapsuleGeometry(0.95, 0.3, 8, 18), this.holoMat(0.36));
+    shoulders.position.y = 2.08;
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.78, 1.5, 10, 22), this.holoMat(0.38)); torso.position.y = 1.2;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.22, 0.23, 20), this.holoMat(0.45)); neck.position.y = 2.63;
 
     this.headGroup = new THREE.Group();
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 28, 26), this.holoMat(0.46));
+    head.scale.set(0.95, 1.1, 0.92); head.position.y = 3.2;
+    const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.35, 22, 18), this.holoMat(0.35)); jaw.position.set(0, 2.95, 0.12); jaw.scale.set(1.08, 0.7, 0.8);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xc7f6ff });
+    this.eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), eyeMat); this.eyeL.position.set(-0.13, 3.23, 0.42);
+    this.eyeR = this.eyeL.clone(); this.eyeR.position.x = 0.13;
+    this.mouth = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.03), new THREE.MeshBasicMaterial({ color: 0xe2ffff })); this.mouth.position.set(0, 2.98, 0.42);
     this.headGroup.add(head, jaw, this.eyeL, this.eyeR, this.mouth);
 
-    this.armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 1.05, 8, 10), this.hologramMaterial(0.33));
-    this.armL.position.set(-0.9, 1.55, 0);
-    this.armL.rotation.z = 0.22;
+    this.armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 1.05, 8, 12), this.holoMat(0.32)); this.armL.position.set(-1.05, 1.67, 0); this.armL.rotation.z = 0.25;
+    this.armR = this.armL.clone(); this.armR.position.x = 1.05; this.armR.rotation.z = -0.25;
+    const hand = new THREE.SphereGeometry(0.17, 12, 12);
+    const handL = new THREE.Mesh(hand, this.holoMat(0.34)); handL.position.set(-1.2, 0.95, 0.08);
+    const handR = handL.clone(); handR.position.x = 1.2;
 
-    this.armR = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 1.05, 8, 10), this.hologramMaterial(0.33));
-    this.armR.position.set(0.9, 1.55, 0);
-    this.armR.rotation.z = -0.22;
+    this.root.add(shoulders, torso, neck, this.headGroup, this.armL, this.armR, handL, handR);
 
-    const pelvis = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 0.4, 8, 14), this.hologramMaterial(0.34));
-    pelvis.position.y = 0.42;
-
-    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 1.25, 8, 12), this.hologramMaterial(0.3));
-    legL.position.set(-0.32, -0.7, 0);
-    const legR = legL.clone();
-    legR.position.x = 0.32;
-
-    this.avatarRoot.add(torso, neck, this.headGroup, this.armL, this.armR, pelvis, legL, legR);
-
-    const baseRing = new THREE.Mesh(
-      new THREE.TorusGeometry(1.45, 0.03, 8, 64),
-      new THREE.MeshBasicMaterial({ color: 0x62d7ff, transparent: true, opacity: 0.6 })
-    );
-    baseRing.rotation.x = Math.PI / 2;
-    baseRing.position.y = -1.45;
-    this.baseRing = baseRing;
-
-    this.scene.add(this.avatarRoot, baseRing);
+    this.ring = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.03, 8, 70), new THREE.MeshBasicMaterial({ color: 0x62dbff, transparent: true, opacity: 0.7 }));
+    this.ring.rotation.x = Math.PI / 2; this.ring.position.y = -1.35;
+    this.scene.add(this.root, this.ring);
   }
 
-  addFX() {
-    const plane = new THREE.PlaneGeometry(5, 8, 1, 1);
-    const shader = new THREE.ShaderMaterial({
-      transparent: true,
-      uniforms: { time: { value: 0 } },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float time;
-        varying vec2 vUv;
-        void main() {
-          float scan = step(0.96, fract((vUv.y + time * 0.25) * 26.0));
-          float glow = smoothstep(0.65, 0.0, abs(vUv.x - 0.5));
-          float alpha = scan * 0.08 * glow;
-          gl_FragColor = vec4(0.45, 0.88, 1.0, alpha);
-        }
-      `
+  buildParticles() {
+    const count = 700;
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 3;
+      pos[i * 3 + 1] = Math.random() * 4 - 1;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 2.2;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const m = new THREE.PointsMaterial({ color: 0x7ceaff, size: 0.015, transparent: true, opacity: 0.55 });
+    this.particles = new THREE.Points(g, m);
+    this.scene.add(this.particles);
+  }
+
+  bind() {
+    window.addEventListener('mousemove', (e) => {
+      this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      this.mouse.y = (e.clientY / window.innerHeight) * 2 - 1;
     });
-
-    this.scanPlane = new THREE.Mesh(plane, shader);
-    this.scanPlane.position.set(0, 1.2, 1.45);
-    this.scene.add(this.scanPlane);
-  }
-
-  bindEvents() {
     window.addEventListener('resize', () => {
-      const w = this.container.clientWidth;
-      const h = this.container.clientHeight;
-      this.camera.aspect = w / h;
+      this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(w, h);
-    });
-
-    window.addEventListener('mousemove', (event) => {
-      this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.mouse.y = (event.clientY / window.innerHeight) * 2 - 1;
+      this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     });
   }
 
-  setSpeaking(flag) {
-    this.speaking = flag;
-  }
-
-  setViseme(viseme) {
-    this.currentViseme = viseme;
-  }
+  setSpeaking(flag) { this.speaking = flag; }
+  setViseme(v) { this.currentViseme = v; }
 
   animate() {
     const t = this.clock.getElapsedTime();
+    this.root.position.y = -1.2 + Math.sin(t * 1.2) * 0.03;
+    this.root.rotation.y = Math.sin(t * 0.38) * 0.08;
 
-    const breathe = Math.sin(t * 1.25) * 0.025;
-    this.avatarRoot.position.y = -1.15 + breathe;
-    this.baseRing.scale.setScalar(1 + Math.sin(t * 2) * 0.02);
+    this.headGroup.rotation.y += (this.mouse.x * 0.18 - this.headGroup.rotation.y) * 0.06;
+    this.headGroup.rotation.x += (-this.mouse.y * 0.08 - this.headGroup.rotation.x) * 0.06;
 
-    const targetX = this.mouse.x * 0.22;
-    const targetY = this.mouse.y * 0.12;
-    this.headGroup.rotation.y += (targetX - this.headGroup.rotation.y) * 0.05;
-    this.headGroup.rotation.x += (-targetY - this.headGroup.rotation.x) * 0.05;
+    const blink = Math.max(0, Math.sin(t * 0.95 + 0.6) - 0.97) * 20;
+    this.eyeL.scale.y = this.eyeR.scale.y = 1 - Math.min(0.92, blink);
 
-    const blink = Math.max(0, Math.sin(t * 0.9 + 0.5) - 0.97) * 18;
-    const eyeScale = 1 - Math.min(blink, 0.92);
-    this.eyeL.scale.y = eyeScale;
-    this.eyeR.scale.y = eyeScale;
+    const mouthMap = { rest: 1, A: 2.8, E: 2.1, O: 2.4, U: 2.0, M: 0.8 };
+    const target = mouthMap[this.currentViseme] ?? 1;
+    this.mouth.scale.y += (target - this.mouth.scale.y) * 0.34;
 
     if (this.speaking) {
-      this.armL.rotation.x = Math.sin(t * 3) * 0.25;
-      this.armR.rotation.x = Math.sin(t * 3 + 1.2) * 0.25;
-      this.baseRing.material.opacity = 0.75 + Math.sin(t * 8) * 0.08;
+      this.armL.rotation.x = Math.sin(t * 3.6) * 0.22;
+      this.armR.rotation.x = Math.sin(t * 3.6 + 1.4) * 0.22;
+      this.pulseLight.intensity = 2.2 + Math.sin(t * 10.5) * 0.7;
+      this.ring.scale.setScalar(1 + Math.sin(t * 8) * 0.03);
     } else {
       this.armL.rotation.x *= 0.9;
       this.armR.rotation.x *= 0.9;
-      this.baseRing.material.opacity = 0.6;
+      this.pulseLight.intensity = 1.9;
+      this.ring.scale.setScalar(1);
     }
 
-    const mouthMap = { rest: 0.05, A: 0.14, E: 0.1, O: 0.12, U: 0.1, M: 0.04 };
-    const targetMouth = mouthMap[this.currentViseme] ?? 0.05;
-    this.mouth.scale.y += (targetMouth / 0.05 - this.mouth.scale.y) * 0.28;
-
-    this.scanPlane.material.uniforms.time.value = t;
-    this.scanPlane.position.y = 1 + Math.sin(t * 0.45) * 0.16;
-
-    if (Math.random() < 0.003) {
-      this.avatarRoot.position.x = (Math.random() - 0.5) * 0.06;
-    } else {
-      this.avatarRoot.position.x *= 0.85;
-    }
-
+    this.particles.rotation.y += 0.0018;
+    this.particles.position.y = Math.sin(t * 0.6) * 0.08;
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(this.animate);
   }
